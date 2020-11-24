@@ -1,7 +1,9 @@
+from json import load
 import gan
 import data_loader
 import numpy as np
 from tensorflow.keras import losses, optimizers
+from tensorflow.keras.models import load_model
 
 def data_process():
     x_train, y_train, x_test, y_test = data_loader.load_data()
@@ -24,4 +26,11 @@ def model():
     discminator.evaluate(x_test, y_test)
 
 if __name__ == "__main__":
-    model()
+    x_train, y_train, x_test, y_test = data_loader.load_data()
+    clf = gan.make_classifier(x_train, y_train)
+    clf.compile(optimizer=optimizers.Adam(1e-4), loss=losses.SparseCategoricalCrossentropy(from_logits=True), metrics=["accuracy"])
+    clf.fit(x_train, y_train, epochs=10)
+    clf.save("./models/classifier")
+
+    model = load_model("./models/classifier")
+    model.evaluate(x_test, y_test)
