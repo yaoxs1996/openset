@@ -3,7 +3,10 @@ import time
 from tensorflow import keras
 from tensorflow.keras import layers, losses, optimizers
 from tensorflow.keras.layers import Dense, InputLayer
-from tensorflow.python.ops.gen_math_ops import cross
+from tensorflow.python.ops.gen_batch_ops import batch
+import data_loader
+import numpy as np
+from sklearn.metrics import accuracy_score, recall_score, confusion_matrix
 
 BATCH_SIZE = 256
 noise_dim = 100
@@ -23,7 +26,18 @@ def make_discriminator(input):
     model.add(InputLayer(input_shape=input.shape[1:]))
     model.add(Dense(256, activation="relu"))
     model.add(Dense(512, activation="relu"))
-    model.add(Dense(1))
+    model.add(Dense(1, activation="sigmoid"))
+
+    return model
+
+# 增加一个分类器模型，仿照论文的方法进行实验
+def make_classifier(x, y):
+    n_classes = len(np.unique(y))
+    model = keras.Sequential()
+    model.add(InputLayer(input_shape=x.shape[1:]))
+    model.add(Dense(512, activation="relu"))
+    model.add(Dense(512, activation="relu"))
+    model.add(Dense(n_classes, activation="softmax"))
 
     return model
 
@@ -51,6 +65,7 @@ def get_optimizers():
 
     return generator_optimizer, discriminator_optimizer
 
+x_train, _, _, _ = data_loader.load_data()
 generator = make_generator(x_train)
 discriminator = make_discriminator(x_train)
 
@@ -65,6 +80,8 @@ def train_step(x_train):
 
         real_output = discriminator(x_train, training=True)
         fake_output = discriminator(generated_data, training=True)
+        #real_output = discriminator.predict_classes(x_train)
+        #fake_output = discriminator.predict_classes(generated_data)
 
         gen_loss = generator_loss(fake_output)
         disc_loss = discriminator_loss(real_output, fake_output)
@@ -83,3 +100,45 @@ def train(dataset, epochs):
             train_step(data_batch)
 
         print("Time for epoch {} is {} sec".format(epoch + 1, time.time()-start))
+
+def test(x_test, y_test):
+    #y_pred = discriminator.predict(x_test)
+    y_pred = discriminator.predict_classes(x_test)
+    print(y_pred)
+    print(np.unique(y_pred))
+    
+    print("准确度为：")
+    print(accuracy_score(y_test, y_pred))
+    print("召回率为：")
+    print(recall_score(y_test, y_pred))
+    print("混淆矩阵：")
+    print(confusion_matrix(y_test, y_pred))
+
+def main():
+    x_train, y_train, x_test, y_test = data_loader.load_data()
+
+    num_per_class = int(x_train.shape[0] / len(np.unique(y_train)))
+    num_known_classes = 7       # 已知类的个数
+    num_train = num_per_class * num_known_classes
+    x_train = x_train[:num_train]
+    y_train = y_train[:num_train]
+
+    train_dataset = tf.data.Dataset.from_tensor_slices(x_train).shuffle(100).batch(BATCH_SIZE)
+    print("-----开始训练生成对抗网络-----")
+    train(train_dataset, 100)
+
+    # 划分新类：0-6为已知类，7-9为新类
+    y_test = y_test.astype(np.int).copy()       # 原测试标签是只读的
+    y_test[y_test <= 6] = 1
+    y_test[y_test > 6] = 0
+
+    print("-----开始测试新类检测-----")
+    test(x_test, y_test)
+
+if __name__ == "__main__":
+    # x_train, _, _, _ = data_loader.load_data()
+    # print(x_train.shape)
+    # generator = make_generator(x_train)
+    # noise = tf.random.normal([1, 100])
+    # print(generator(noise))
+    main()
