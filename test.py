@@ -4,6 +4,7 @@ import data_loader
 import numpy as np
 from tensorflow.keras import losses, optimizers
 from tensorflow.keras.models import load_model
+from collections import Counter
 
 def data_process():
     x_train, y_train, x_test, y_test = data_loader.load_data()
@@ -27,10 +28,17 @@ def model():
 
 if __name__ == "__main__":
     x_train, y_train, x_test, y_test = data_loader.load_data()
+
+    x_train = x_train[:7*6000]
+    y_train = y_train[:7*6000].copy()
+
+    # print(np.unique(y_train))
+    # print(Counter(y_train))
+
     clf = gan.make_classifier(x_train, y_train)
     clf.compile(optimizer=optimizers.Adam(1e-4), loss=losses.SparseCategoricalCrossentropy(from_logits=True), metrics=["accuracy"])
     clf.fit(x_train, y_train, epochs=10)
     clf.save("./models/classifier")
 
-    model = load_model("./models/classifier")
-    model.evaluate(x_test, y_test)
+    # model = load_model("./models/classifier")
+    # model.evaluate(x_test, y_test)

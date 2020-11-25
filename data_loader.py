@@ -9,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.metrics import confusion_matrix
+from collections import Counter
 import numpy as np
 import warnings
 
@@ -43,6 +44,16 @@ def load_data(standardize=True, reduction=True):
         pca = PCA(n_components=0.95)
         x_train = pca.fit_transform(x_train)
         x_test = pca.transform(x_test)
+
+    # 对训练集排序
+    print("对训练集排序")
+    train = np.c_[x_train, y_train]
+    train = train[np.argsort(train[:,-1]), :]
+
+    x_train = train[:, :-1]
+    y_train = train[:, -1]
+
+    #print(Counter(y_train))
 
     return x_train, y_train, x_test, y_test
 
