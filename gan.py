@@ -3,23 +3,29 @@ import tensorflow as tf
 import time
 from tensorflow import keras
 from tensorflow.keras import layers, losses, optimizers
-from tensorflow.keras.layers import Dense, InputLayer
+from tensorflow.keras.layers import Dense, InputLayer, BatchNormalization, Activation
 from tensorflow.keras.models import load_model
 from tensorflow import nn
+from tensorflow.python.keras.layers.advanced_activations import LeakyReLU
 import data_loader
 import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, confusion_matrix
 
 BATCH_SIZE = 256
 noise_dim = 100
+num_classes = 7
 
 # 生成器
 # 输入为100维的噪声数据
 def make_generator(input):
     model = keras.Sequential()
-    model.add(Dense(256, use_bias=False, input_shape=(100,)))
+    model.add(Dense(256, use_bias=False, input_shape=(noise_dim,)))
+    # model.add(BatchNormalization())
+    # model.add(Activation("relu"))
     model.add(Dense(512, use_bias=False))
-    model.add(Dense(input.shape[1], activation="sigmoid"))
+    # model.add(BatchNormalization())
+    # model.add(Activation("relu"))
+    model.add(Dense(input.shape[1], activation="sigmoid", use_bias=False))
 
     assert model.output_shape == (None, input.shape[1])
 
@@ -28,9 +34,14 @@ def make_generator(input):
 def make_discriminator(input):
     model = keras.Sequential()
     model.add(InputLayer(input_shape=input.shape[1:]))
-    model.add(Dense(256, activation="relu"))
-    model.add(Dense(512, activation="relu"))
-    model.add(Dense(1, activation="sigmoid"))
+    # 将relu替换成LeakyReLu
+    model.add(Dense(256, activation="relu", use_bias=False))
+    # model.add(BatchNormalization())
+    # model.add(LeakyReLU(0.2))
+    model.add(Dense(512, activation="relu", use_bias=False))
+    # model.add(BatchNormalization())
+    # model.add(LeakyReLU(0.2))
+    model.add(Dense(1, activation="sigmoid", use_bias=False))
 
     return model
 
@@ -63,9 +74,11 @@ def discriminator_loss(real_output, fake_output):
 def generator_loss(fake_output, kl_fake_output):
     cross_entropy = losses.BinaryCrossentropy(from_logits=True)
 
-    unifom_dist = tf.ones([shape[0], 7]) * (1.0 / 7)
+    unifom_dist = tf.ones([BATCH_SIZE, num_classes]) * (1.0 / num_classes)
+    kl = losses.KLDivergence()
+    kl_loss = kl(kl_fake_output, unifom_dist) * num_classes
 
-    return cross_entropy(tf.ones_like(fake_output), fake_output)
+    return cross_entropy(tf.ones_like(fake_output), fake_output) + kl_loss
 
 def get_optimizers():
     generator_optimizer = optimizers.Adam(1e-4)
@@ -90,7 +103,7 @@ def train_step(x_train):
         real_output = discriminator(x_train, training=True)
         fake_output = discriminator(generated_data, training=True)
 
-        kl_fake_output = nn.log_softmax(classifier(fake_output))
+        kl_fake_output = nn.log_softmax(classifier(generated_data))
 
         gen_loss = generator_loss(fake_output, kl_fake_output)
         disc_loss = discriminator_loss(real_output, fake_output)
