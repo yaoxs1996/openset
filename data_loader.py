@@ -5,10 +5,11 @@
 """
 
 from tensorflow.keras.datasets import fashion_mnist
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.decomposition import PCA
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.metrics import confusion_matrix
+from sklearn.manifold import LocallyLinearEmbedding
 from collections import Counter
 import numpy as np
 import warnings
@@ -44,7 +45,15 @@ def load_data(standardize=True, reduction=True):
         pca = PCA(n_components=0.95)
         x_train = pca.fit_transform(x_train)
         x_test = pca.transform(x_test)
+        # lle = LocallyLinearEmbedding(n_neighbors=3, n_components=256, n_jobs=-1)
+        # x_train = lle.fit_transform(x_train)
+        # x_test = lle.transform(x_test)
 
+    # scaler = MinMaxScaler()
+    # x_train = scaler.fit_transform(x_train)
+    # x_test = scaler.fit_transform(x_test)
+
+    print("降维后的维度为：", x_train.shape[-1])
     # 对训练集排序
     print("对训练集排序")
     train = np.c_[x_train, y_train]
@@ -54,8 +63,12 @@ def load_data(standardize=True, reduction=True):
     y_train = train[:, -1]
 
     #print(Counter(y_train))
+    np.save("./data/x_train.npy", x_train)
+    np.save("./data/y_train.npy", y_train)
+    np.save("./data/x_test.npy", x_test)
+    np.save("./data/y_test.npy", y_test)
 
-    return x_train, y_train, x_test, y_test
+    #return x_train, y_train, x_test, y_test
 
 def novelty_detection():
     x_train, y_train, x_test, y_test = load_data()
@@ -87,6 +100,6 @@ def novelty_detection():
     print(confusion_matrix(y_test, y_pred))
 
 if __name__ == "__main__":
-    novelty_detection()
-
+    #novelty_detection()
+    load_data()
 # 结论：至少对于Fashion Mnist这个数据集而言，使用LOF进行新类检测几乎是无效的

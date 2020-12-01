@@ -2,3 +2,5 @@
 __pycache__/*
 models/classifier/*
 !.gitkeep
+data/*
+!.gitkeep

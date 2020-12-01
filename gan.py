@@ -116,6 +116,8 @@ def train_step(x_train):
     generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
     discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
     
+    # if bat == 17:
+    #     tf.print("g_loss:", gen_loss, "d_loss:", disc_loss)
     #tf.print("g_loss: ", gen_loss, "d_loss: ", disc_loss)
     #tf.print(type(gen_loss))
     # g_loss = gen_loss.numpy()
@@ -126,8 +128,11 @@ def train(dataset, epochs):
     for epoch in range(epochs):
         start = time.time()
 
+        #bat = 0
+
         for data_batch in dataset:
             #info = train_step(data_batch)
+            #bat = bat + 1
             train_step(data_batch)
 
         print("Time for epoch {} is {:.4f} sec".format(epoch + 1, time.time()-start))
@@ -159,7 +164,7 @@ def main():
     x_train = x_train[:num_train]
     y_train = y_train[:num_train]
 
-    train_dataset = tf.data.Dataset.from_tensor_slices(x_train).shuffle(100).batch(BATCH_SIZE)
+    train_dataset = tf.data.Dataset.from_tensor_slices(x_train).shuffle(1024).batch(BATCH_SIZE)
     print("-----开始训练生成对抗网络-----")
     train(train_dataset, 100)
 
