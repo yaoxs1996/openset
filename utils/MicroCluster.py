@@ -34,6 +34,7 @@ class MicroCluster:
         self.epsilon = 0.00005
         self.min_variance = math.pow(1, -5)
 
+    # 计算微簇中心
     def get_center(self):
         center = [self.linear_sum[i] / self.nb_points for i in range(len(self.linear_sum))]
         return center
