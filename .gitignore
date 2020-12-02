@@ -4,3 +4,4 @@ models/classifier/*
 !.gitkeep
 data/*
 !.gitkeep
+utils/__pycache__/*
