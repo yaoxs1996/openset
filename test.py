@@ -51,6 +51,8 @@ class MicroCluster():
         self.class_square_sum = []
         self.class_centers = []
         self.class_radius = []
+        self.class_mean = []
+        self.class_cov = []
 
         for i in range(len(self.class_labels)):
             if self.class_counts[i] == 0:
@@ -58,6 +60,9 @@ class MicroCluster():
                 self.class_square_sum.append(np.zeros(x.shape[1]))
                 self.class_centers.append(np.zeros(x.shape[1]))
                 self.class_radius.append(0.0)
+                #self.class_mean.append(0.0)     # 均值
+                self.class_mean.append(np.zeros(x.shape[1]))
+                self.class_cov.append(0.0)      # 协方差
                 continue
 
             index = (y==i)
@@ -73,6 +78,17 @@ class MicroCluster():
 
             radius = self.__compute_radius(data, linear_sum, square_sum)
             self.class_radius.append(radius)
+
+            if self.class_counts[i] <= 1:
+                mean = np.zeros(x.shape[1])
+                self.class_mean.append(mean)
+                self.class_cov.append(0.0)
+            else:
+                mean = np.mean(data, axis=0)
+                self.class_mean.append(mean)
+
+                cov = np.cov(data.T)        # 注意转置
+                self.class_cov.append(cov)
 
     def __compute_radius(self, data, ls, ss):
         n_points = data.shape[0]
@@ -94,6 +110,12 @@ class MicroCluster():
 
         return class_counts
 
+    def get_class_labels(self):
+        return self.class_labels
+
+    def get_class_info(self):
+        return self.class_mean, self.class_cov
+
 def init():
     x_train = np.load("./data/x_train.npy")
     y_train = np.load("./data/y_train.npy")
@@ -111,7 +133,7 @@ def init():
     micro_clusters = []
     train_labels = np.unique(y_train)
 
-    for i in range(len(labels)):
+    for i in range(len(np.unique(labels))):
         x = x_train[labels==i, :]
         y = y_train[labels==i]
         cluster_center = cluster_centers[i, :]
@@ -119,5 +141,47 @@ def init():
         temp = MicroCluster(x, y, cluster_center, train_labels)
         micro_clusters.append(temp)
 
+    return micro_clusters
+
+def generate_data():
+    micro_clusters = init()
+    generated_data = []
+    x_train = np.load("./data/x_train.npy")
+    y_train = np.load("./data/y_train.npy")
+    dim = x_train.shape[1]
+    _, counts = np.unique(y_train, return_counts=True)
+    #class_labels = micro_clusters[0].get_class_labels()
+    class_labels = micro_clusters[0].class_labels
+    for i in range(len(np.unique(class_labels))):
+        count = counts[i]
+        res = np.array([])
+        for j in range(len(micro_clusters)):
+            #mu, sigma = micro_clusters[j].get_class_info()
+            mu = micro_clusters[j].class_mean[i]
+            sigma = micro_clusters[j].class_cov[i]
+            class_n = micro_clusters[j].class_counts[i]
+            n_sample = math.ceil((3 * dim * class_n) / count)
+
+            if class_n <= 1:
+                #g_data = np.array([])
+                g_data = micro_clusters[j].class_centers[i]
+                g_data = g_data.reshape((1, -1))
+                #print(g_data.shape)
+            else:
+                g_data = np.random.multivariate_normal(mu, sigma, n_sample)
+            #res.append(g_data)
+            if res.size == 0:
+                res = g_data
+            else:
+                res = np.concatenate((res, g_data), axis=0)
+
+        #res = np.concatenate(res, axis=0)
+        generated_data.append(res)
+
+    return generated_data
+
 if __name__ == "__main__":
-    init()
+    generated = generate_data()
+    for i in range(len(generated)):
+        print(i, generated[i].shape)
+    #init()
