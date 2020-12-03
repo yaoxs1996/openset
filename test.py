@@ -7,7 +7,10 @@ from tensorflow.keras.models import load_model
 from collections import Counter
 from utils.CluStream import CluStream
 from sklearn.cluster import KMeans
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.metrics import confusion_matrix
 import math
+from progressbar import ProgressBar
 
 def data_process():
     x_train, y_train, x_test, y_test = data_loader.load_data()
@@ -180,8 +183,36 @@ def generate_data():
 
     return generated_data
 
+def detect_novel():
+    generated_data = generate_data()
+    x_test = np.load("./data/x_test.npy")
+    y_test = np.load("./data/y_test.npy")
+    y_test = y_test.astype(np.int).copy()       # 原测试标签是只读的
+    y_test[y_test <= 6] = 1
+    y_test[y_test > 6] = -1
+
+    y_pred = []
+
+    progress = ProgressBar()
+    #for i in range(x_test.shape[0]):
+    for i in progress(range(x_test.shape[0])):
+        data = x_test[i, :]
+        data = data.reshape((1, -1))
+        pred = -1
+        for j in range(len(generated_data)):
+            clf = LocalOutlierFactor(n_neighbors=20, metric="manhattan", novelty=True, n_jobs=-1)
+            train = generated_data[j]
+            clf.fit(train)
+            result = clf.predict(data)
+            if(result == 1):
+                pred = 1
+                break
+        
+        y_pred.append(pred)
+
+    y_pred = np.array(y_pred)
+    print(confusion_matrix(y_test, y_pred))
+
 if __name__ == "__main__":
-    generated = generate_data()
-    for i in range(len(generated)):
-        print(i, generated[i].shape)
+    detect_novel()
     #init()
