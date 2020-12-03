@@ -8,7 +8,7 @@ from collections import Counter
 from utils.CluStream import CluStream
 from sklearn.cluster import KMeans
 from sklearn.neighbors import LocalOutlierFactor
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, accuracy_score
 import math
 from progressbar import ProgressBar
 
@@ -136,7 +136,10 @@ def init():
     micro_clusters = []
     train_labels = np.unique(y_train)
 
-    for i in range(len(np.unique(labels))):
+    progress = ProgressBar()
+    print("微簇模型初始化中......")
+    #for i in range(len(np.unique(labels))):
+    for i in progress(range(len(np.unique(labels)))):
         x = x_train[labels==i, :]
         y = y_train[labels==i]
         cluster_center = cluster_centers[i, :]
@@ -155,7 +158,10 @@ def generate_data():
     _, counts = np.unique(y_train, return_counts=True)
     #class_labels = micro_clusters[0].get_class_labels()
     class_labels = micro_clusters[0].class_labels
-    for i in range(len(np.unique(class_labels))):
+    progress = ProgressBar()
+    print("生成数据中......")
+    #for i in range(len(np.unique(class_labels))):
+    for i in progress(range(len(np.unique(class_labels)))):
         count = counts[i]
         res = np.array([])
         for j in range(len(micro_clusters)):
@@ -192,23 +198,36 @@ def detect_novel():
     y_test[y_test > 6] = -1
 
     y_pred = []
-
     progress = ProgressBar()
+    # 预训练分类器
+    clfs = []
+    print("预训练LOF分类器......")
+    for i in progress(range(len(generated_data))):
+        clf = LocalOutlierFactor(n_neighbors=20, metric="manhattan", novelty=True, n_jobs=-1)
+        train = generated_data[i]
+        clf.fit(train)
+        clfs.append(clf)
+
+    progress2 = ProgressBar()
+    print("检测新类中......")
     #for i in range(x_test.shape[0]):
-    for i in progress(range(x_test.shape[0])):
+    for i in progress2(range(x_test.shape[0])):
         data = x_test[i, :]
         data = data.reshape((1, -1))
         pred = -1
         for j in range(len(generated_data)):
-            clf = LocalOutlierFactor(n_neighbors=20, metric="manhattan", novelty=True, n_jobs=-1)
-            train = generated_data[j]
-            clf.fit(train)
+            # clf = LocalOutlierFactor(n_neighbors=20, metric="manhattan", novelty=True, n_jobs=-1)
+            # train = generated_data[j]
+            # clf.fit(train)
+            clf = clfs[j]
             result = clf.predict(data)
             if(result == 1):
                 pred = 1
                 break
         
         y_pred.append(pred)
+        # y_true = y_test[:i+1]
+        # print(accuracy_score(y_true, y_pred))
 
     y_pred = np.array(y_pred)
     print(confusion_matrix(y_test, y_pred))
