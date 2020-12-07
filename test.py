@@ -203,7 +203,7 @@ def detect_novel():
     clfs = []
     print("预训练LOF分类器......")
     for i in progress(range(len(generated_data))):
-        clf = LocalOutlierFactor(n_neighbors=20, metric="manhattan", novelty=True, n_jobs=-1)
+        clf = LocalOutlierFactor(n_neighbors=20, metric="mahalanobis", novelty=True, n_jobs=-1)
         train = generated_data[i]
         clf.fit(train)
         clfs.append(clf)
